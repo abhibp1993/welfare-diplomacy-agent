@@ -9,24 +9,25 @@ import traceback
 from datetime import datetime
 from pathlib import Path
 from typing import Dict
-
+import os
 from loguru import logger
 from rich.logging import RichHandler
 from rich.progress import Progress
 from tqdm import tqdm
-
+import message_summarizer
 # import constants
 # import utils
 import wandb
-from agents import DiplomacyAgent
+from agents import WdAgent, agent_class_map
 # from agents import Agent, AgentCompletionError, model_name_to_agent
-# from data_types import (
-#     AgentResponse,
-#     AgentParams,
-#     MessageSummaryHistory,
-#     PromptAblation,
-# )
-from diplomacy import Game, Message
+from data_types import (
+    AgentResponse,
+    AgentParams,
+    MessageSummaryHistory,
+    PromptAblation,
+)
+
+from diplomacy import Game, Message, Power
 
 logger.configure(handlers=[{"sink": RichHandler()}])
 
@@ -41,6 +42,7 @@ logger.configure(handlers=[{"sink": RichHandler()}])
 
 def main():
     # Load configuration
+    global message_round
     game_config: dict = parse_args()
 
     # Initialize W&B
@@ -65,20 +67,41 @@ def main():
     logger.debug(f"Initialized data logging directory: {data_dir}")
 
     # Initialize game
-    game: Game = initialize_game(wandb.config.map_name, wandb.config.max_message_rounds)
+    print("Working directory:", os.getcwd())
+    game: Game = initialize_game(game_config["map_name"], game_config["max_message_rounds"])
     logger.debug(f"Initialized diplomacy game: {game}")
 
+    # Verify all configured players exist in the game
+    # for power_name in game_config["players"]:
+    #     game.powers[power_name.upper()] = Power(game, power_name.upper())
+    print("game.powers keys:", list(game.powers.keys()))
+
     # Initialize players
-    players: Dict[str, DiplomacyAgent] = initialize_players(game_config)
+    players: Dict[str, WdAgent] = initialize_players(game_config)
+    message_summary_history: MessageSummaryHistory = {}
+    for power_name, agent in players.items():
+        message_summary_history[power_name] = []
+
+    max_years = game_config["max_years"]
+    final_game_year = game_config["max_years"] + 1900
+    prompt_ablations = game_config["prompt_ablations"]
+    prompt_ablations = [
+                        PromptAblation[ablation.upper()]
+                        for ablation in prompt_ablations
+                        if ablation != ""]
+
+    print("Game powers:", list(game.powers.keys()))
+    rendered_with_orders = game.render(incl_abbrev=True)
 
     # Run main loop
     with Progress() as progress:
         # Setup progress bar for tracking phases
-        max_years = game_config["max_years"]
         progress_phases = progress.add_task("[red]🔄️ Phases...", total=max_years * 3)
 
         # Main loop for the game
         while not game.is_game_done:
+            phase_message_history: list[tuple(str, int, str, str, str)] = []
+
             logger.info(f"🕰️  Beginning phase {game.get_current_phase()}")
 
             # Generate messages to be sent by each player in this phase.
@@ -97,22 +120,57 @@ def main():
                 description="[blue]🙊 Messages",
                 total=num_message_rounds * 7
             )
+            possible_orders = game.get_all_possible_orders()
+
             for message_round in range(1, num_message_rounds + 1):
                 # For each player, decide messages to send.
                 for power_name, agent in players.items():
+
+                    params = AgentParams(
+                        game = game,
+                        power = game.powers[power_name],
+                        final_game_year = final_game_year,
+                        # Unused params
+                        message_summary_history = message_summary_history,
+                        possible_orders= possible_orders,
+                        current_message_round = message_round,
+                        max_message_rounds = -1,
+                        prompt_ablations = prompt_ablations.split(",") if prompt_ablations else [],
+                    )
                     # Step the player with entire history (i.e., game instance) to generate messages and orders
-                    messages: dict = agent.generate_messages(game)
+                    response = agent.generate_response(params)
+                    messages: dict = agent.generate_messages(params)
+                    orders: list = agent.generate_orders(params)
+
 
                     # Execute send_message in game
-                    for recipient, message in messages.items():
+                    game.set_orders(power_name, [])
+                    try:
+                        game.set_orders(power_name, orders)
+                        print ("orders registered")
+                    except Exception as exc:
+                        print (exc)
+
+                    power_messages = messages.get(power_name) or {}
+                    for recipient, message in power_messages.items():
                         msg = Message(
                             sender=power_name,
                             recipient=recipient,
                             message=message,
                             phase=game.get_current_phase(),
                         )
-                        game.add_message(msg)
 
+                        game.add_message(msg)
+                        phase_message_history.append(
+                            (
+                                game.get_current_phase(),
+                                message_round,
+                                power_name,
+                                recipient,
+                                message,
+                            )
+                        )
+                        message_summary_history[power_name]
                     #  Update W&B player-level logs (compute metrics)
                     if not game_config["disable_wandb"]:
                         update_wandb_player_logs(game, power_name, agent, messages)
@@ -123,10 +181,30 @@ def main():
                     # Update progress bar
                     progress.update(progress_message_rounds, advance=1)
 
+            rendered_with_orders = game.render(incl_abbrev=True)
+
+
+            for power_name, agent in players.items():
+                params = AgentParams(
+                    game=game,
+                    power = game.powers[power_name],
+                    final_game_year=final_game_year,
+                    # Unused params
+                    message_summary_history = message_summary_history,
+                    possible_orders={},
+                    current_message_round=-1,
+                    max_message_rounds=-1,
+                    prompt_ablations=prompt_ablations
+                )
+
+                message_summary_history[power_name].append(message_summarizer.summarize(params))
+
+
             # Update progress bar
             progress.remove_task(progress_message_rounds)
 
             # Step game with game.process()
+
             game.process()
             if int(game.phase.split()[1]) - 1900 > game_config["max_years"]:
                 game.finish()
@@ -143,6 +221,7 @@ def main():
 
 
 def update_wandb_player_logs(game, power_name, agent, messages):
+
     pass
 
 
@@ -199,6 +278,7 @@ def initialize_game(map_name: str, max_message_rounds: int) -> Game:
     return game
 
 
+
 def initialize_players(game_config):
     """
     Assume that game_config dict has key "players" which is a list of player configurations.
@@ -225,10 +305,17 @@ def initialize_players(game_config):
     :param game_config:
     :return: Dict[str, Agent]
     """
-    pass
+    power_name_to_agent: Dict[str, WdAgent] = {}
+    for power_name in game_config["players"]:
+        config = game_config["players"][power_name]
+        power_name_to_agent[power_name] = agent_class_map[config["agent_class"]](power_name, **config["agent_params"])
+
+    return power_name_to_agent
 
 
 def parse_args():
+
+
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
         description="Simulate a game of Diplomacy with the given parameters.",
@@ -261,6 +348,13 @@ def parse_args():
         action="store_true",
         help="💾Save the game to disk (uses W&B run ID & name).",
     )
+    parser.add_argument(
+        "--max_years",
+        dest="max_years",
+        type=int,
+        default=10,
+        help="🗓️ Ends the game after this many years (~3x as many turns).",
+    )
     parser.add_argument("--seed", dest="seed", type=int, default=0, help="Random seed")
     parser.add_argument(
         "--entity",
@@ -280,13 +374,7 @@ def parse_args():
         action="store_true",
         help="🚫Disable Weights & Biases logging.",
     )
-    parser.add_argument(
-        "--max_years",
-        dest="max_years",
-        type=int,
-        default=10,
-        help="🗓️ Ends the game after this many years (~3x as many turns).",
-    )
+
     parser.add_argument(
         "--early_stop_max_years",
         dest="early_stop_max_years",
@@ -340,12 +428,12 @@ def parse_args():
         default=30,
         help="🚫Max number of completion errors before killing the run.",
     )
-    # parser.add_argument(
-    #     "--prompt_ablations",
-    #     type=str,
-    #     default="",
-    #     help=f"🧪Ablations to apply to the agent prompts. Separate multiple ablations by commas. All available values are {', '.join([elem.name.lower() for elem in PromptAblation])}",
-    # )
+    parser.add_argument(
+        "--prompt_ablations",
+        type=str,
+        default="",
+        help=f"🧪Ablations to apply to the agent prompts. Separate multiple ablations by commas. All available values are {', '.join([elem.name.lower() for elem in PromptAblation])}",
+    )
     parser.add_argument(
         "--exploiter_prompt",
         dest="exploiter_prompt",
@@ -445,10 +533,77 @@ def parse_args():
     )
 
     args = parser.parse_args()
+    config = vars(args)
+    config["players"] = {
+        "ENGLAND": {
+            "agent_class": "WdAgent",
+            "agent_params": {
+                "agent_model": "llama3.2",
+                "temperature": 1.0,
+                "top_p": 0.9,
+                "max_completion_errors": 30,
+            },
+        },
+        "FRANCE": {
+            "agent_class": "WdAgent",
+            "agent_params": {
+                "agent_model": "llama3.2",
+                "temperature": 1.0,
+                "top_p": 0.9,
+                "max_completion_errors": 30,
+            },
+        },
+        "ITALY": {
+            "agent_class": "WdAgent",
+            "agent_params": {
+                "agent_model": "llama3.2",
+                "temperature": 1.0,
+                "top_p": 0.9,
+                "max_completion_errors": 30,
+            },
+        },
+        "GERMANY": {
+            "agent_class": "WdAgent",
+            "agent_params": {
+                "agent_model": "llama3.2",
+                "temperature": 1.0,
+                "top_p": 0.9,
+                "max_completion_errors": 30,
+            },
+        },
+        "AUSTRIA": {
+            "agent_class": "WdAgent",
+            "agent_params": {
+                "agent_model": "llama3.2",
+                "temperature": 1.0,
+                "top_p": 0.9,
+                "max_completion_errors": 30,
+            },
+        },
+        "RUSSIA": {
+            "agent_class": "WdAgent",
+            "agent_params": {
+                "agent_model": "llama3.2",
+                "temperature": 1.0,
+                "top_p": 0.9,
+                "max_completion_errors": 30,
+            },
+        },
+        "TURKEY": {
+            "agent_class": "WdAgent",
+            "agent_params": {
+                "agent_model": "llama3.2",
+                "temperature": 1.0,
+                "top_p": 0.9,
+                "max_completion_errors": 30,
+            },
+        },
+        }
+    return config
+
     # if args.save is False:
     #     if "y" in input("Do you want to save the game? (yes/no)").lower():
     #         args.save = True
-    return vars(args)
 
 
 if __name__ == "__main__":
