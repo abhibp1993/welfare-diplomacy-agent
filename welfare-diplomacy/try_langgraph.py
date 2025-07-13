@@ -15,5 +15,7 @@ model = ChatOpenAI(
     api_key = openai_api_key,
     model = "ai/llama3.2",  # e.g., "llama-2", "opt-1.3b", "mistral"
 )
-model_with_tools = model.bind_tools([AgentResponse])
+
+
+model_with_structure = model.with_structured_output(AgentResponse)
 
