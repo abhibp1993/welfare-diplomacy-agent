@@ -9,19 +9,15 @@ import traceback
 from datetime import datetime
 from pathlib import Path
 from typing import Dict
-import os
 from loguru import logger
 from rich.logging import RichHandler
 from rich.progress import Progress
 from tqdm import tqdm
 import message_summarizer
-# import constants
-# import utils
+import pandas as pd
 import wandb
 from agents import WdAgent, agent_class_map
-# from agents import Agent, AgentCompletionError, model_name_to_agent
 from data_types import (
-    AgentResponse,
     AgentParams,
     MessageSummaryHistory,
     PromptAblation,
@@ -61,20 +57,20 @@ def main():
     # Initialize data logging
     data_dir = init_data_log_directory(
         run_name=wandb.run.name,
-        prefix=Path(game_config["output_folder"]).absolute(),
+        prefix=Path(game_config["output_folder"]).absolute()
     )
+
+
     data = dict()
+    data["responses"] = pd.DataFrame(columns=["phase", "time_sent", "sender", "recipient", "message", "order", "reasoning", "message_round"])
+    wandb_responses = wandb.Table(dataframe=data["responses"], log_mode="MUTABLE")
+
+
     logger.debug(f"Initialized data logging directory: {data_dir}")
 
     # Initialize game
-    print("Working directory:", os.getcwd())
     game: Game = initialize_game(game_config["map_name"], game_config["max_message_rounds"])
     logger.debug(f"Initialized diplomacy game: {game}")
-
-    # Verify all configured players exist in the game
-    # for power_name in game_config["players"]:
-    #     game.powers[power_name.upper()] = Power(game, power_name.upper())
-    print("game.powers keys:", list(game.powers.keys()))
 
     # Initialize players
     players: Dict[str, WdAgent] = initialize_players(game_config)
@@ -90,9 +86,13 @@ def main():
                         for ablation in prompt_ablations
                         if ablation != ""]
 
-    print("Game powers:", list(game.powers.keys()))
     rendered_with_orders = game.render(incl_abbrev=True)
-
+    log_object = {
+        "_progress/year_fractional": 0.0,
+        "board/rendering_with_orders": wandb.Html(rendered_with_orders),
+        "board/rendering_state": wandb.Html(rendered_with_orders),
+    }
+    wandb.log(log_object)
     # Run main loop
     with Progress() as progress:
         # Setup progress bar for tracking phases
@@ -141,15 +141,15 @@ def main():
                     response = agent.generate_response(params)
                     messages: dict = agent.generate_messages(params)
                     orders: list = agent.generate_orders(params)
+                    reasoning: str = agent.generate_reasoning(params)
 
 
                     # Execute send_message in game
                     game.set_orders(power_name, [])
                     try:
                         game.set_orders(power_name, orders)
-                        print ("orders registered")
                     except Exception as exc:
-                        print (exc)
+                        continue
 
                     power_messages = messages.get(power_name) or {}
                     for recipient, message in power_messages.items():
@@ -171,9 +171,22 @@ def main():
                             )
                         )
                         message_summary_history[power_name]
-                    #  Update W&B player-level logs (compute metrics)
-                    if not game_config["disable_wandb"]:
-                        update_wandb_player_logs(game, power_name, agent, messages)
+
+                        # Add a new row to your wand_messages
+                        wandb_responses.add_data(
+                            str(msg.phase),
+                            str(msg.time_sent),
+                            str(msg.sender),
+                            str(msg.recipient),
+                            str(msg.message),
+                            str(orders),
+                            str(reasoning),
+                            str(message_round),
+                        )
+
+                    #  Update W&B messages
+                        wandb.log({"responses": wandb_responses})
+
 
                     # Update internal logs
                     data = update_internal_player_logs(data, game, power_name, agent, messages)
@@ -182,7 +195,11 @@ def main():
                     progress.update(progress_message_rounds, advance=1)
 
             rendered_with_orders = game.render(incl_abbrev=True)
-
+            log_object = {
+                "board/rendering_with_orders": wandb.Html(rendered_with_orders),
+                "board/rendering_state": wandb.Html(rendered_with_orders),
+            }
+            wandb.log(log_object)
 
             for power_name, agent in players.items():
                 params = AgentParams(
@@ -197,7 +214,7 @@ def main():
                     prompt_ablations=prompt_ablations
                 )
 
-                message_summary_history[power_name].append(message_summarizer.summarize(params))
+                message_summary_history[power_name].append(message_summarizer.summarize(phase_message_history))
 
 
             # Update progress bar
