@@ -137,6 +137,7 @@ def main():
                         max_message_rounds = -1,
                         prompt_ablations = prompt_ablations.split(",") if prompt_ablations else [],
                     )
+
                     # Step the player with entire history (i.e., game instance) to generate messages and orders
                     response = agent.generate_response(params)
                     messages: dict = agent.generate_messages(params)

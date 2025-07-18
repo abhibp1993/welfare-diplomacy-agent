@@ -14,7 +14,7 @@ from typing import Any, Sequence, Tuple
 import sys
 
 sys.path.append(
-    "/Users/hannaherlebach/research/welfare-diplomacy/welfare_diplomacy_baselines/"
+    "/Users/hannaherlebach/research/welfare_diplomacy/welfare_diplomacy_baselines/"
 )
 
 from network import config, network_policy, parameter_provider

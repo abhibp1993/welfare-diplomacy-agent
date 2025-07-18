@@ -249,7 +249,7 @@ def run_game(
     folder_name = f"figure_{timestamp_str}"
 
 # Create the folder if it doesn't exist
-  folder_path = os.path.join('/Users/alialattar/reu2025/welfare-diplomacy-agent/welfare-diplomacy/welfare_diplomacy_figures', folder_name)
+  folder_path = os.path.join('/welfare_diplomacy/welfare_diplomacy_figures', folder_name)
   if not os.path.exists(folder_path):
       os.makedirs(folder_path)
 

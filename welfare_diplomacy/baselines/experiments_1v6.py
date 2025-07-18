@@ -16,7 +16,7 @@ import logging
 logging.basicConfig(filename='equilibrium_experiments_years_2.log', filemode='a', level=logging.INFO)
 
 import sys
-sys.path.append('/Users/hannaherlebach/research/welfare-diplomacy/welfare_diplomacy_baselines/')
+sys.path.append('/Users/hannaherlebach/research/welfare_diplomacy/welfare_diplomacy_baselines/')
 
 import os
 import numpy as np
