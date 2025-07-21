@@ -79,7 +79,28 @@ def main():
 
         # Main loop for the game
         while not game.is_game_done:
-            logger.info(f"🕰️  Beginning phase {game.get_current_phase()}")
+            current_phase = game.get_current_phase()
+            logger.info(f"🕰️  Beginning phase {current_phase}")
+
+            # Inform agent that new phase has started
+            for power_name, agent in players.items():
+                agent.start_phase(game, current_phase)
+
+            # Run negotiation phase
+            try:
+                negotiation_phase(game, players)
+            except Exception as e:
+                logger.error(f"💥 Error during negotiation phase: {e}")
+                # TODO: Log the error (local and wandb), terminate game
+                break
+
+            # Run decision phase
+            try:
+                decision_phase(game, players)
+            except Exception as e:
+                logger.error(f"💥 Error during negotiation phase: {e}")
+                # TODO: Log the error (local and wandb), terminate game
+                break
 
             # Generate messages to be sent by each player in this phase.
             #    Each player participates in message round.
