@@ -14,6 +14,7 @@ from loguru import logger
 from rich.logging import RichHandler
 from rich.progress import Progress
 from tqdm import tqdm
+import yaml
 
 # import constants
 # import utils
@@ -41,25 +42,28 @@ logger.configure(handlers=[{"sink": RichHandler()}])
 
 def main():
     # Load configuration
-    game_config: dict = parse_args()
+    # game_config: dict = parse_args()
+    with open('run_configs/config0.yml', 'r') as file:
+        game_config = yaml.safe_load(file)
+    logger.info(f"Loaded game configuration: {game_config}")
 
     # Initialize W&B
     wandb.init(
-        entity=game_config["entity"],
-        project=game_config["project"],
-        dir=Path(game_config.get("wandb_dir", "")).absolute(),
-        name=game_config["run_name"],
-        save_code=False,
+        entity=game_config["wandb"]["entity"],
+        project=game_config["wandb"]["project"],
+        dir=game_config["wandb"].get("wandb_dir", None),
+        name=game_config["wandb"]["run_name"],
+        save_code=game_config["wandb"]["save_code"],
         config=game_config,
-        mode="disabled" if game_config["disable_wandb"] else "online",
-        settings=wandb.Settings(code_dir="experiments"),
+        mode="disabled" if game_config["wandb"]["disable"] else "online",
+        settings=wandb.Settings(code_dir="."),
     )
     assert wandb.run is not None
 
     # Initialize data logging
     data_dir = init_data_log_directory(
         run_name=wandb.run.name,
-        prefix=Path(game_config["output_folder"]).absolute(),
+        prefix=Path(game_config["logging"]["output_folder"]).absolute(),
     )
     data = dict()
     logger.debug(f"Initialized data logging directory: {data_dir}")
@@ -74,7 +78,7 @@ def main():
     # Run main loop
     with Progress() as progress:
         # Setup progress bar for tracking phases
-        max_years = game_config["max_years"]
+        max_years = game_config["game"]["max_years"]
         progress_phases = progress.add_task("[red]🔄️ Phases...", total=max_years * 3)
 
         # Main loop for the game
@@ -112,7 +116,7 @@ def main():
             num_message_rounds = (
                 1
                 if game.phase_type == "R" or game.no_press
-                else game_config["max_message_rounds"]
+                else game_config["game"]["max_message_rounds"]
             )
             progress_message_rounds = progress.add_task(
                 description="[blue]🙊 Messages",
@@ -135,7 +139,7 @@ def main():
                         game.add_message(msg)
 
                     #  Update W&B player-level logs (compute metrics)
-                    if not game_config["disable_wandb"]:
+                    if not game_config["wandb"]["disable"]:
                         update_wandb_player_logs(game, power_name, agent, messages)
 
                     # Update internal logs
@@ -149,11 +153,11 @@ def main():
 
             # Step game with game.process()
             game.process()
-            if int(game.phase.split()[1]) - 1900 > game_config["max_years"]:
+            if int(game.phase.split()[1]) - 1900 > game_config["game"]["max_years"]:
                 game.finish()
 
             # Update W&B game-level logs
-            if not game_config["disable_wandb"]:
+            if not game_config["wandb"]["disable"]:
                 update_wandb_game_logs(game, players)
 
             # Update internal logs
