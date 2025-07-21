@@ -1,3 +1,5 @@
+import random
+
 import diplomacy
 
 
@@ -31,6 +33,9 @@ class DiplomacyAgent:
     def generate_messages(self):
         raise NotImplementedError("generate_messages method must be implemented in subclasses")
 
+    def generate_orders(self):
+        raise NotImplementedError("generate_orders method must be implemented in subclasses")
+
 
 class WDAgent(DiplomacyAgent):
     def generate_messages(self):
@@ -45,3 +50,17 @@ class WDAgent(DiplomacyAgent):
         }
         del trial[self.pow_name]
         return trial
+
+    def generate_orders(self):
+        # Get all locations where this power can issue orders
+        orderable_locations = self.game.get_orderable_locations(self.pow_name)
+        orders = []
+
+        for location in orderable_locations:
+            # Get all possible orders for the current location
+            possible_orders = self.game.get_all_possible_orders()
+            if possible_orders[location]:
+                # Randomly select one valid order
+                orders.append(random.choice(possible_orders[location]))
+
+        return orders

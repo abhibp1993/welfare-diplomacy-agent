@@ -93,6 +93,22 @@ def run_negotiation_phase(game, players, game_config, progress, log_dict, wandb_
     finally:
         if not game_config["wandb"]["disable"]:
             wandb.log({"responses": wandb_log_messages})
+        # Update progress bar
+        progress.remove_task(progress_message_rounds)
+
+
+def run_movement_phase(game, players):
+    orders = dict()
+    for power_name, agent in players.items():
+        # Step the player with entire history (i.e., game instance) to generate orders
+        try:
+            orders[power_name] = agent.generate_orders()
+        except Exception as e:
+            logger.error(f"💥 Error during movement phase for {power_name}: {e}")
+            raise e
+
+    for power_name, order in orders.items():
+        game.set_orders(power_name, order)
 
 
 def main():
@@ -164,14 +180,11 @@ def main():
                 # TODO: Log the error (local and wandb), terminate game
                 break
 
-            pprint.pprint(data)
-            exit(0)
-
             # Run decision phase
             try:
-                decision_phase(game, players)
+                run_movement_phase(game, players)
             except Exception as e:
-                logger.error(f"💥 Error during negotiation phase: {e}")
+                logger.error(f"💥 Error during negotiation phase: \n{e}\n\n{traceback.format_exc()}")
                 # TODO: Log the error (local and wandb), terminate game
                 break
 
@@ -179,50 +192,50 @@ def main():
             for power_name, agent in players.items():
                 agent.end_phase()
 
-            # Generate messages to be sent by each player in this phase.
-            #    Each player participates in message round.
-            #    There are two conditions under which player is not allowed to exchange messages:
-            #    1. Game is in "R" phase (retreats), or
-            #    2. There's an external sanction imposed on that player.
-            #    In first case, Agent class will return empty messages.
-            #    In second case, the main loop will skip calling agent's generate_message() function.
-            num_message_rounds = (
-                1
-                if game.phase_type == "R" or game.no_press
-                else game_config["game"]["max_message_rounds"]
-            )
-            progress_message_rounds = progress.add_task(
-                description="[blue]🙊 Messages",
-                total=num_message_rounds * 7
-            )
-            for message_round in range(1, num_message_rounds + 1):
-                # For each player, decide messages to send.
-                for power_name, agent in players.items():
-                    # Step the player with entire history (i.e., game instance) to generate messages and orders
-                    messages: dict = agent.generate_messages(game)
-
-                    # Execute send_message in game
-                    for recipient, message in messages.items():
-                        msg = Message(
-                            sender=power_name,
-                            recipient=recipient,
-                            message=message,
-                            phase=game.get_current_phase(),
-                        )
-                        game.add_message(msg)
-
-                    #  Update W&B player-level logs (compute metrics)
-                    if not game_config["wandb"]["disable"]:
-                        update_wandb_player_logs(game, power_name, agent, messages)
-
-                    # Update internal logs
-                    data = update_internal_player_logs(data, game, power_name, agent, messages)
-
-                    # Update progress bar
-                    progress.update(progress_message_rounds, advance=1)
-
-            # Update progress bar
-            progress.remove_task(progress_message_rounds)
+            # # Generate messages to be sent by each player in this phase.
+            # #    Each player participates in message round.
+            # #    There are two conditions under which player is not allowed to exchange messages:
+            # #    1. Game is in "R" phase (retreats), or
+            # #    2. There's an external sanction imposed on that player.
+            # #    In first case, Agent class will return empty messages.
+            # #    In second case, the main loop will skip calling agent's generate_message() function.
+            # num_message_rounds = (
+            #     1
+            #     if game.phase_type == "R" or game.no_press
+            #     else game_config["game"]["max_message_rounds"]
+            # )
+            # progress_message_rounds = progress.add_task(
+            #     description="[blue]🙊 Messages",
+            #     total=num_message_rounds * 7
+            # )
+            # for message_round in range(1, num_message_rounds + 1):
+            #     # For each player, decide messages to send.
+            #     for power_name, agent in players.items():
+            #         # Step the player with entire history (i.e., game instance) to generate messages and orders
+            #         messages: dict = agent.generate_messages(game)
+            #
+            #         # Execute send_message in game
+            #         for recipient, message in messages.items():
+            #             msg = Message(
+            #                 sender=power_name,
+            #                 recipient=recipient,
+            #                 message=message,
+            #                 phase=game.get_current_phase(),
+            #             )
+            #             game.add_message(msg)
+            #
+            #         #  Update W&B player-level logs (compute metrics)
+            #         if not game_config["wandb"]["disable"]:
+            #             update_wandb_player_logs(game, power_name, agent, messages)
+            #
+            #         # Update internal logs
+            #         data = update_internal_player_logs(data, game, power_name, agent, messages)
+            #
+            #         # Update progress bar
+            #         progress.update(progress_message_rounds, advance=1)
+            #
+            # # Update progress bar
+            # progress.remove_task(progress_message_rounds)
 
             # Step game with game.process()
             game.process()
@@ -234,7 +247,7 @@ def main():
                 update_wandb_game_logs(game, players)
 
             # Update internal logs
-            data = update_internal_game_logs(data, game, players)
+            # data = update_internal_game_logs(data, game, players)
 
             # Update progress bar
             progress.update(progress_phases, advance=1)
