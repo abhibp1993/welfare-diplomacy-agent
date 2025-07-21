@@ -41,3 +41,4 @@ scipy
 six==1.16.0
 tabulate==0.8.9
 toolz==0.11.1
+pandas

@@ -1,10 +1,10 @@
 game:
   map_name: standard_welfare
   seed: 0
-  max_years: 10
-  max_message_rounds: 3
+  max_years: 1
+  max_message_rounds: 1
 wandb:
-  disable: false
+  disable: true
   run_name: null
   entity: null
   project: temporary
@@ -34,6 +34,7 @@ players:
       temperature: 1
       top_p: 0.9
       max_completion_errors: 30
+      max_message_rounds: 3
   ITALY:
     agent_class: WdAgent
     agent_params:
@@ -43,6 +44,7 @@ players:
       temperature: 1
       top_p: 0.9
       max_completion_errors: 30
+      max_message_rounds: 3
   GERMANY:
     agent_class: WdAgent
     agent_params:
@@ -52,6 +54,7 @@ players:
       temperature: 1
       top_p: 0.9
       max_completion_errors: 30
+      max_message_rounds: 3
   AUSTRIA:
     agent_class: WdAgent
     agent_params:
@@ -61,6 +64,7 @@ players:
       temperature: 1
       top_p: 0.9
       max_completion_errors: 30
+      max_message_rounds: 3
   RUSSIA:
     agent_class: WdAgent
     agent_params:
@@ -70,6 +74,7 @@ players:
       temperature: 1
       top_p: 0.9
       max_completion_errors: 30
+      max_message_rounds: 3
   TURKEY:
     agent_class: WdAgent
     agent_params:
@@ -79,3 +84,4 @@ players:
       temperature: 1
       top_p: 0.9
       max_completion_errors: 30
+      max_message_rounds: 3

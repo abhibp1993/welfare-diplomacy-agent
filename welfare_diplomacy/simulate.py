@@ -5,21 +5,22 @@ Language model scaffolding to play Diplomacy.
 """
 
 import argparse
+import pprint
 import traceback
 from datetime import datetime
 from pathlib import Path
 from typing import Dict
 
-from loguru import logger
-from rich.logging import RichHandler
-from rich.progress import Progress
-from tqdm import tqdm
-import yaml
-
+import pandas as pd
 # import constants
 # import utils
 import wandb
-from agents import DiplomacyAgent
+import yaml
+from loguru import logger
+from rich.progress import Progress
+from tqdm import tqdm
+
+import welfare_diplomacy.agents as agents
 # from agents import Agent, AgentCompletionError, model_name_to_agent
 # from data_types import (
 #     AgentResponse,
@@ -29,7 +30,8 @@ from agents import DiplomacyAgent
 # )
 from diplomacy import Game, Message
 
-logger.configure(handlers=[{"sink": RichHandler()}])
+
+# logger.configure(handlers=[{"sink": RichHandler()}])
 
 
 # from diplomacy.utils.export import to_saved_game_format
@@ -40,12 +42,65 @@ logger.configure(handlers=[{"sink": RichHandler()}])
 # )
 
 
+def run_negotiation_phase(game, players, game_config, progress, log_dict, wandb_log_messages):
+    def update_message_logs(msg_round):
+        log_dict["responses"].loc[len(log_dict["responses"])] = [
+            msg.phase,
+            msg.time_sent,
+            msg.sender,
+            msg.recipient,
+            msg.message,
+            msg_round,
+        ]
+        wandb_log_messages.add_data(
+            str(msg.phase),
+            str(msg.time_sent),
+            str(msg.sender),
+            str(msg.recipient),
+            str(msg.message),
+            str(msg_round),
+        )
+
+    num_message_rounds = game_config["game"]["max_message_rounds"]
+    progress_message_rounds = progress.add_task(
+        description="[blue]🙊 Messages",
+        total=num_message_rounds * 7
+    )
+    try:
+        for message_round in range(1, num_message_rounds + 1):
+            # For each player, decide messages to send.
+            for power_name, agent in players.items():
+                # Step the player with entire history (i.e., game instance) to generate messages and orders
+                messages: dict = agent.generate_messages()
+
+                # Execute send_message in game
+                for recipient, message in messages.items():
+                    msg = Message(
+                        sender=power_name,
+                        recipient=recipient,
+                        message=message,
+                        phase=game.get_current_phase(),
+                    )
+                    game.add_message(msg)
+
+                    # Log message
+                    update_message_logs(msg_round=message_round)
+
+                # Update progress bar
+                progress.update(progress_message_rounds, advance=1)
+    except Exception as e:
+        logger.exception(f"💥 Error during negotiation phase: \n{e}\n\n{traceback.format_exc()}")
+    finally:
+        if not game_config["wandb"]["disable"]:
+            wandb.log({"responses": wandb_log_messages})
+
+
 def main():
     # Load configuration
     # game_config: dict = parse_args()
     with open('run_configs/config0.yml', 'r') as file:
         game_config = yaml.safe_load(file)
-    logger.info(f"Loaded game configuration: {game_config}")
+    logger.info(f"Loaded game configuration: \n{pprint.pformat(game_config)}")
 
     # Initialize W&B
     wandb.init(
@@ -66,14 +121,18 @@ def main():
         prefix=Path(game_config["logging"]["output_folder"]).absolute(),
     )
     data = dict()
+    data["responses"] = pd.DataFrame(
+        columns=["phase", "time_sent", "sender", "recipient", "message", "message_round"])
+    wandb_responses = wandb.Table(dataframe=data["responses"], log_mode="MUTABLE")
     logger.debug(f"Initialized data logging directory: {data_dir}")
 
     # Initialize game
-    game: Game = initialize_game(wandb.config.map_name, wandb.config.max_message_rounds)
-    logger.debug(f"Initialized diplomacy game: {game}")
+    game: Game = initialize_game(game_config["game"]["map_name"], game_config["game"]["max_message_rounds"])
+    logger.success(f"Initialized diplomacy game: {game}")
 
     # Initialize players
-    players: Dict[str, DiplomacyAgent] = initialize_players(game_config)
+    players: Dict[str, agents.DiplomacyAgent] = initialize_players(game, game_config)
+    logger.success(f"Players initialized: \n{pprint.pformat(players)}")
 
     # Run main loop
     with Progress() as progress:
@@ -86,17 +145,27 @@ def main():
             current_phase = game.get_current_phase()
             logger.info(f"🕰️  Beginning phase {current_phase}")
 
-            # Inform agent that new phase has started
+            # Start new phase
             for power_name, agent in players.items():
-                agent.start_phase(game, current_phase)
+                agent.start_phase()
 
             # Run negotiation phase
             try:
-                negotiation_phase(game, players)
+                run_negotiation_phase(
+                    game=game,
+                    players=players,
+                    game_config=game_config,
+                    progress=progress,
+                    log_dict=data,
+                    wandb_log_messages=wandb_responses,
+                )
             except Exception as e:
-                logger.error(f"💥 Error during negotiation phase: {e}")
+                logger.error(f"💥 Error during negotiation phase: \n{e}\n\n{traceback.format_exc()}")
                 # TODO: Log the error (local and wandb), terminate game
                 break
+
+            pprint.pprint(data)
+            exit(0)
 
             # Run decision phase
             try:
@@ -105,6 +174,10 @@ def main():
                 logger.error(f"💥 Error during negotiation phase: {e}")
                 # TODO: Log the error (local and wandb), terminate game
                 break
+
+            # End phase
+            for power_name, agent in players.items():
+                agent.end_phase()
 
             # Generate messages to be sent by each player in this phase.
             #    Each player participates in message round.
@@ -224,33 +297,24 @@ def initialize_game(map_name: str, max_message_rounds: int) -> Game:
     return game
 
 
-def initialize_players(game_config):
+def initialize_players(game, game_config):
     """
-    Assume that game_config dict has key "players" which is a list of player configurations.
-        Format: game_config = {
-            "players": {
-                "power_name": {
-                    "agent_class": "<name of class>",  # e.g., "OpenAIAgent", "ClaudeAgent", etc.
-                    "agent_params": {
-                        "agent_model": "gpt-4o-mini",
-                        "temperature": 1.0,
-                        "top_p": 0.9,
-                        "max_completion_errors": 30,
-                        # Other agent-specific parameters...
-                    },
-                },
-                ...
-            }
+    Initialize agents for each power in the game based on the game configuration.
 
-    TODO: The function should
-        1. Create an instance of each agent based on "agent_class" key.
-        2. Initialize the agent with the parameters from "agent_params" key.
-        3. Return a dictionary of agents with power names as keys.
-
-    :param game_config:
-    :return: Dict[str, Agent]
+    :param game: (Game) Diplomacy game instance.
+    :param game_config: (dict) Game configuration dictionary containing player configurations.
+    :return: Dict[str, Agent] Dictionary mapping power names to initialized agent instances.
     """
-    pass
+    assert game_config["players"].keys() == game.powers.keys(), \
+        f"Game config has mismatched powers: {game_config['players'].keys()=} & {game.powers.keys()=}"
+
+    power_name_to_agent = dict()
+    for name, params in game_config["players"].items():
+        agent_cls_name = params["agent_class"]
+        agent_cls = agents.get_class(agent_cls_name)
+        power_name_to_agent[name] = agent_cls(game=game, pow_name=name, **params["agent_params"])
+
+    return power_name_to_agent
 
 
 def parse_args():
