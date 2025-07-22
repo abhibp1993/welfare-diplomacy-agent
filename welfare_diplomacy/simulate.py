@@ -42,75 +42,6 @@ from diplomacy import Game, Message
 # )
 
 
-def run_negotiation_phase(game, players, game_config, progress, log_dict, wandb_log_messages):
-    def update_message_logs(msg_round):
-        log_dict["responses"].loc[len(log_dict["responses"])] = [
-            msg.phase,
-            msg.time_sent,
-            msg.sender,
-            msg.recipient,
-            msg.message,
-            msg_round,
-        ]
-        wandb_log_messages.add_data(
-            str(msg.phase),
-            str(msg.time_sent),
-            str(msg.sender),
-            str(msg.recipient),
-            str(msg.message),
-            str(msg_round),
-        )
-
-    num_message_rounds = game_config["game"]["max_message_rounds"]
-    progress_message_rounds = progress.add_task(
-        description="[blue]🙊 Messages",
-        total=num_message_rounds * 7
-    )
-    try:
-        for message_round in range(1, num_message_rounds + 1):
-            # For each player, decide messages to send.
-            for power_name, agent in players.items():
-                # Step the player with entire history (i.e., game instance) to generate messages and orders
-                messages: dict = agent.generate_messages()
-
-                # Execute send_message in game
-                for recipient, message in messages.items():
-                    msg = Message(
-                        sender=power_name,
-                        recipient=recipient,
-                        message=message,
-                        phase=game.get_current_phase(),
-                    )
-                    game.add_message(msg)
-
-                    # Log message
-                    update_message_logs(msg_round=message_round)
-
-                # Update progress bar
-                progress.update(progress_message_rounds, advance=1)
-    except Exception as e:
-        logger.exception(f"💥 Error during negotiation phase: \n{e}\n\n{traceback.format_exc()}")
-    finally:
-        if not game_config["wandb"]["disable"]:
-            wandb.log({"responses": wandb_log_messages})
-        # Update progress bar
-        progress.remove_task(progress_message_rounds)
-
-
-def run_movement_phase(game, players):
-    orders = dict()
-    for power_name, agent in players.items():
-        # Step the player with entire history (i.e., game instance) to generate orders
-        try:
-            orders[power_name] = agent.generate_orders()
-        except Exception as e:
-            logger.error(f"💥 Error during movement phase for {power_name}: {e}")
-            raise e
-
-    for power_name, order in orders.items():
-        game.set_orders(power_name, order)
-
-
 def main():
     # Load configuration
     # game_config: dict = parse_args()
@@ -251,6 +182,75 @@ def main():
 
             # Update progress bar
             progress.update(progress_phases, advance=1)
+
+
+def run_negotiation_phase(game, players, game_config, progress, log_dict, wandb_log_messages):
+    def update_message_logs(msg_round):
+        log_dict["responses"].loc[len(log_dict["responses"])] = [
+            msg.phase,
+            msg.time_sent,
+            msg.sender,
+            msg.recipient,
+            msg.message,
+            msg_round,
+        ]
+        wandb_log_messages.add_data(
+            str(msg.phase),
+            str(msg.time_sent),
+            str(msg.sender),
+            str(msg.recipient),
+            str(msg.message),
+            str(msg_round),
+        )
+
+    num_message_rounds = game_config["game"]["max_message_rounds"]
+    progress_message_rounds = progress.add_task(
+        description="[blue]🙊 Messages",
+        total=num_message_rounds * 7
+    )
+    try:
+        for message_round in range(1, num_message_rounds + 1):
+            # For each player, decide messages to send.
+            for power_name, agent in players.items():
+                # Step the player with entire history (i.e., game instance) to generate messages and orders
+                messages: dict = agent.generate_messages()
+
+                # Execute send_message in game
+                for recipient, message in messages.items():
+                    msg = Message(
+                        sender=power_name,
+                        recipient=recipient,
+                        message=message,
+                        phase=game.get_current_phase(),
+                    )
+                    game.add_message(msg)
+
+                    # Log message
+                    update_message_logs(msg_round=message_round)
+
+                # Update progress bar
+                progress.update(progress_message_rounds, advance=1)
+    except Exception as e:
+        logger.exception(f"💥 Error during negotiation phase: \n{e}\n\n{traceback.format_exc()}")
+    finally:
+        if not game_config["wandb"]["disable"]:
+            wandb.log({"responses": wandb_log_messages})
+        # Update progress bar
+        progress.remove_task(progress_message_rounds)
+
+
+def run_movement_phase(game, players):
+    orders = dict()
+    for power_name, agent in players.items():
+        # Step the player with entire history (i.e., game instance) to generate orders
+        try:
+            orders[power_name] = agent.generate_orders()
+        except Exception as e:
+            logger.error(f"💥 Error during movement phase for {power_name}: {e}")
+            raise e
+
+    for power_name, order in orders.items():
+        game.set_orders(power_name, order)
 
 
 def update_wandb_player_logs(game, power_name, agent, messages):
