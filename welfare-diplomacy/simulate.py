@@ -18,7 +18,6 @@ from tqdm import tqdm
 # import constants
 # import utils
 import wandb
-from agents import DiplomacyAgent
 # from agents import Agent, AgentCompletionError, model_name_to_agent
 # from data_types import (
 #     AgentResponse,
@@ -401,12 +400,6 @@ def parse_args():
         action="store_true",
         help="⏭️ Don't use the completion preface (which helps agents comply with the json format).",
     )
-    parser.add_argument(
-        "--no_press",
-        dest="no_press",
-        type=bool,
-        default=False,
-        help="🤐If 'True', all agents play a no-press policy. For debugging purposes.",
     )
     parser.add_argument(
         "--no_press_powers",
