@@ -25,6 +25,12 @@ import random
 
 import diplomacy
 
+from typing import Dict, List, Optional, Literal
+from typing import TypedDict, Annotated
+from langchain_core.messages import HumanMessage, AIMessage
+from langgraph.graph import StateGraph, START, END
+
+Powers = Literal["FRA", "ITA", "RUS", "ENG", "GER", "AUS", "TUR"]
 
 def get_class(class_name: str):
     if class_name.lower() == "WDAgent".lower():
@@ -62,12 +68,12 @@ class DiplomacyAgent:
 
 class WDAgent(DiplomacyAgent):
     def __init__(self):
-        # iniitialzie your langgraph StateGraph
+        # initialize your Langgraph StateGraph
+        workflow = StateGraph()
         self._graph = None  # langgraph course, single agent
         super().__init__(game=None, pow_name=None)  # game and pow_name will
 
     def generate_messages(self):
-
     # Fetch relevant information for prompt (welfare-diplomacy specific)
     # Generate user and system prompts (welfare-diplomacy specific)
     # invoke graph to generate messages (langgraph specific)
