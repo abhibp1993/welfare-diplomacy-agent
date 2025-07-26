@@ -4,7 +4,7 @@ game:
   max_years: 1
   max_message_rounds: 1
 wandb:
-  disable: true
+  disable: false
   run_name: null
   entity: null
   project: temporary

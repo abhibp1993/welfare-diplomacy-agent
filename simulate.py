@@ -15,16 +15,12 @@ import pandas as pd
 # import constants
 # import utils
 import wandb
-<<<<<<< HEAD:welfare-diplomacy/simulate.py
-=======
 import yaml
 from loguru import logger
 from rich.progress import Progress
 from tqdm import tqdm
-
-import welfare_diplomacy.agents as agents
->>>>>>> origin/main:welfare_diplomacy/simulate.py
-# from agents import Agent, AgentCompletionError, model_name_to_agent
+import welfare_diplomacy_agent.welfare_diplomacy.agents as agents
+# from welfare_diplomacy_agent.welfare_diplomacy.agents import agent, AgentCompletionError, model_name_to_agent
 # from data_types import (
 #     AgentResponse,
 #     AgentParams,
@@ -48,7 +44,7 @@ from diplomacy import Game, Message
 def main():
     # Load configuration
     # game_config: dict = parse_args()
-    with open('run_configs/config0.yml', 'r') as file:
+    with open('welfare_diplomacy/run_configs/config0.yml', 'r') as file:
         game_config = yaml.safe_load(file)
     logger.info(f"Loaded game configuration: \n{pprint.pformat(game_config)}")
 
@@ -61,7 +57,7 @@ def main():
         save_code=game_config["wandb"]["save_code"],
         config=game_config,
         mode="disabled" if game_config["wandb"]["disable"] else "online",
-        settings=wandb.Settings(code_dir="."),
+        settings=wandb.Settings(code_dir="welfare_diplomacy/agents"),
     )
     assert wandb.run is not None
 
@@ -506,6 +502,12 @@ def parse_args():
         action="store_true",
         help="⏭️ Don't use the completion preface (which helps agents comply with the json format).",
     )
+    parser.add_argument(
+        "--no_press",
+        dest="no_press",
+        type=bool,
+        default=False,
+        help="🤐If 'True', all agents play a no-press policy. For debugging purposes.",
     )
     parser.add_argument(
         "--no_press_powers",
@@ -570,5 +572,6 @@ if __name__ == "__main__":
         #         )
         #     }
         # )
-        tqdm.write("\n\n\n")  # Add some spacing
+        tqdm.write("\n\n\n") # Add some spacing
+
         raise exc
