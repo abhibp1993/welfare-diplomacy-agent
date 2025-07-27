@@ -27,7 +27,7 @@ class AgentState(BaseModel):
 
 
 class WDAgent(DiplomacyAgent):
-
+    
     def __init__(self, game: diplomacy.Game, pow_name: str, **params):
         super().__init__(game, pow_name, **params)
 
@@ -69,8 +69,15 @@ class WDAgent(DiplomacyAgent):
     def tool_selector(self, state: AgentState):
         """Selects the appropriate tool based on the state of the agent."""
         # Placeholder: always select therapist
-        return "therapist"
-
+        return
+    
+    def _node_evaluator(self, state: AgentState):
+        """
+        Evaluator node: provides feedback, accesses memory, and decides whether to continue or end.
+        """
+        # You can expand this logic to provide feedback, loop, or terminate as needed
+        return state
+    
     def generate_messages(self):
         state = AgentState(
             current_power=self.pow_name,

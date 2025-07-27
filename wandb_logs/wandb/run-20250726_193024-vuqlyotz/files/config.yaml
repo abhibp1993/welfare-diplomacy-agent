@@ -1,0 +1,127 @@
+_wandb:
+    value:
+        cli_version: 0.21.0
+        e:
+            qm5pdceuo8waho45o8pdkgb3ixapef8h:
+                codePath: simulate.py
+                codePathLocal: simulate.py
+                email: nguyenvuhaanh2803@gmail.com
+                executable: /opt/anaconda3/envs/wfd/bin/python
+                git:
+                    commit: 190c7480ae67382157da82246a3e33fd1be8eb6a
+                    remote: https://github.com/abhibp1993/welfare-diplomacy-agent.git
+                host: wireless-10-148-113-250.public.utexas.edu
+                os: macOS-14.5-arm64-arm-64bit
+                program: /Users/hannahnguyen/Downloads/Diplomacy_model/welfare_diplomacy_agent/simulate.py
+                python: CPython 3.11.13
+                root: ./wandb_logs
+                startedAt: "2025-07-27T00:30:24.412603Z"
+                writerId: qm5pdceuo8waho45o8pdkgb3ixapef8h
+        m: []
+        python_version: 3.11.13
+        t:
+            "1":
+                - 95
+                - 105
+            "2":
+                - 95
+                - 105
+            "3":
+                - 16
+            "4": 3.11.13
+            "5": 0.21.0
+            "8":
+                - 2
+            "12": 0.21.0
+            "13": darwin-arm64
+game:
+    value:
+        map_name: standard_welfare
+        max_message_rounds: 1
+        max_years: 1
+        seed: 0
+logging:
+    value:
+        disable: false
+        log_level: INFO
+        output_folder: games
+        save_game: false
+players:
+    value:
+        AUSTRIA:
+            agent_class: WdAgent
+            agent_params:
+                api_key: ollama
+                max_completion_errors: 30
+                max_message_rounds: 3
+                model: llama3.2
+                model_provider_url: http://localhost:11434/v1
+                temperature: 1
+                top_p: 0.9
+        ENGLAND:
+            agent_class: WdAgent
+            agent_params:
+                api_key: ollama
+                max_completion_errors: 30
+                model: llama3.2
+                model_provider_url: http://localhost:11434/v1
+                temperature: 1
+                top_p: 0.9
+        FRANCE:
+            agent_class: WdAgent
+            agent_params:
+                api_key: ollama
+                max_completion_errors: 30
+                max_message_rounds: 3
+                model: llama3.2
+                model_provider_url: http://localhost:11434/v1
+                temperature: 1
+                top_p: 0.9
+        GERMANY:
+            agent_class: WdAgent
+            agent_params:
+                api_key: ollama
+                max_completion_errors: 30
+                max_message_rounds: 3
+                model: llama3.2
+                model_provider_url: http://localhost:11434/v1
+                temperature: 1
+                top_p: 0.9
+        ITALY:
+            agent_class: WdAgent
+            agent_params:
+                api_key: ollama
+                max_completion_errors: 30
+                max_message_rounds: 3
+                model: llama3.2
+                model_provider_url: http://localhost:11434/v1
+                temperature: 1
+                top_p: 0.9
+        RUSSIA:
+            agent_class: WdAgent
+            agent_params:
+                api_key: ollama
+                max_completion_errors: 30
+                max_message_rounds: 3
+                model: llama3.2
+                model_provider_url: http://localhost:11434/v1
+                temperature: 1
+                top_p: 0.9
+        TURKEY:
+            agent_class: WdAgent
+            agent_params:
+                api_key: ollama
+                max_completion_errors: 30
+                max_message_rounds: 3
+                model: llama3.2
+                model_provider_url: http://localhost:11434/v1
+                temperature: 1
+                top_p: 0.9
+wandb:
+    value:
+        disable: false
+        entity: null
+        project: temporary
+        run_name: null
+        save_code: false
+        wandb_dir: ./wandb_logs
