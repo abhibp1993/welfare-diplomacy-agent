@@ -16,8 +16,14 @@ from welfare_diplomacy_agent.welfare_diplomacy.agents.base_agent import Diplomac
 
 Powers = Literal["FRA", "ITA", "RUS", "ENG", "GER", "AUS", "TUR"]
 
+#Add LangSmith tracing and API key
+LANGSMITH_TRACING="true"
+LANGSMITH_ENDPOINT="https://api.smith.langchain.com"
+LANGSMITH_API_KEY="<your-api-key>"
+LANGSMITH_PROJECT="diplomacy"
+OPENAI_API_KEY="<api-key>"
 
-# Simplified state management for LangChain tools + Reflexion
+# Define the state of the agent
 class AgentState(TypedDict):
     """The state of the agent following LangChain tools + Reflexion pattern."""
     messages: Annotated[Sequence[BaseMessage], add_messages]
@@ -195,10 +201,16 @@ class WDAgent(DiplomacyAgent):
         )
         self.model_evaluation = self.model.with_structured_output(EvaluationFeedback)
 
-        # Define tools and bind to LLM
+        # Define tools and bind to LLM (LangGraph Web & Llama compatible)
+        from langchain_core.tools import convert_to_openai_tool
         self.tools = [therapist, art_of_the_deal, back_burner]
+        self.openai_tools = [convert_to_openai_tool(tool) for tool in self.tools]
         self.tools_by_name = {tool.name: tool for tool in self.tools}
-        self.llm_with_tools = self.model.bind_tools(self.tools)
+        # Use 'functions' for Llama/Groq/OpenRouter, 'tools' for OpenAI; most modern LangGraph models accept both
+        try:
+            self.llm_with_tools = self.model.bind_tools(self.openai_tools)
+        except Exception:
+            self.llm_with_tools = self.model.bind(functions=self.openai_tools)
 
         # Memory
         self._memory = {
