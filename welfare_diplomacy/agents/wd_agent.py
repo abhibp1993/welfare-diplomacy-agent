@@ -195,7 +195,7 @@ class WDAgent(DiplomacyAgent):
         self.model_evaluation = self.model.with_structured_output(EvaluationFeedback)
 
         # Define tools and bind to LLM (LangGraph Web & Llama compatible)
-        from langchain_core.tools import convert_to_openai_tool
+        from langchain_core.utils.function_calling import convert_to_openai_tool
         self.tools = [therapist, art_of_the_deal, back_burner]
         self.openai_tools = [convert_to_openai_tool(tool) for tool in self.tools]
         self.tools_by_name = {tool.name: tool for tool in self.tools}

@@ -70,7 +70,7 @@ players:
                 api_key: ollama
                 max_completion_errors: 30
                 max_message_rounds: 3
-                model: llama3-groq-tool-use:8b
+                model: llama3
                 model_provider_url: http://localhost:11434/v1
                 temperature: 1
                 top_p: 0.9
@@ -79,7 +79,7 @@ players:
             agent_params:
                 api_key: ollama
                 max_completion_errors: 30
-                model: llama3-groq-tool-use:8b
+                model: llama3
                 model_provider_url: http://localhost:11434/v1
                 temperature: 1
                 top_p: 0.9
@@ -89,7 +89,7 @@ players:
                 api_key: ollama
                 max_completion_errors: 30
                 max_message_rounds: 3
-                model: llama3-groq-tool-use:8b
+                model: llama3
                 model_provider_url: http://localhost:11434/v1
                 temperature: 1
                 top_p: 0.9
@@ -99,7 +99,7 @@ players:
                 api_key: ollama
                 max_completion_errors: 30
                 max_message_rounds: 3
-                model: llama3-groq-tool-use:8b
+                model: llama3
                 model_provider_url: http://localhost:11434/v1
                 temperature: 1
                 top_p: 0.9
@@ -109,7 +109,7 @@ players:
                 api_key: ollama
                 max_completion_errors: 30
                 max_message_rounds: 3
-                model: llama3-groq-tool-use:8b
+                model: llama3
                 model_provider_url: http://localhost:11434/v1
                 temperature: 1
                 top_p: 0.9
@@ -119,7 +119,7 @@ players:
                 api_key: ollama
                 max_completion_errors: 30
                 max_message_rounds: 3
-                model: llama3-groq-tool-use:8b
+                model: llama3
                 model_provider_url: http://localhost:11434/v1
                 temperature: 1
                 top_p: 0.9
@@ -129,7 +129,7 @@ players:
                 api_key: ollama
                 max_completion_errors: 30
                 max_message_rounds: 3
-                model: llama3-groq-tool-use:8b
+                model: llama3
                 model_provider_url: http://localhost:11434/v1
                 temperature: 1
                 top_p: 0.9
