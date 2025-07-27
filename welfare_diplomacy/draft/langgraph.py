@@ -19,7 +19,7 @@ openai_api_key = "docker"
 model = ChatOpenAI(
     base_url=openai_base_url,
     api_key=openai_api_key,
-    model="llama3.2:1B-Q8_0",  # e.g., "llama-2", "opt-1.3b", "mistral"
+    model="llama3:1B-Q8_0",  # e.g., "llama-2", "opt-1.3b", "mistral"
 )
 
 

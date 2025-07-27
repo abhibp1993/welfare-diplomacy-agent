@@ -21,7 +21,7 @@ players:
     agent_params:
       api_key: ollama
       model_provider_url: 'http://localhost:11434/v1'
-      model: llama3.2
+      model: llama3
       temperature: 1
       top_p: 0.9
       max_completion_errors: 30
@@ -30,7 +30,7 @@ players:
     agent_params:
       api_key: ollama
       model_provider_url: 'http://localhost:11434/v1'
-      model: llama3.2
+      model: llama3
       temperature: 1
       top_p: 0.9
       max_completion_errors: 30
@@ -40,7 +40,7 @@ players:
     agent_params:
       api_key: ollama
       model_provider_url: 'http://localhost:11434/v1'
-      model: llama3.2
+      model: llama3
       temperature: 1
       top_p: 0.9
       max_completion_errors: 30
@@ -50,7 +50,7 @@ players:
     agent_params:
       api_key: ollama
       model_provider_url: 'http://localhost:11434/v1'
-      model: llama3.2
+      model: llama3
       temperature: 1
       top_p: 0.9
       max_completion_errors: 30
@@ -60,7 +60,7 @@ players:
     agent_params:
       api_key: ollama
       model_provider_url: 'http://localhost:11434/v1'
-      model: llama3.2
+      model: llama3
       temperature: 1
       top_p: 0.9
       max_completion_errors: 30
@@ -70,7 +70,7 @@ players:
     agent_params:
       api_key: ollama
       model_provider_url: 'http://localhost:11434/v1'
-      model: llama3.2
+      model: llama3
       temperature: 1
       top_p: 0.9
       max_completion_errors: 30
@@ -80,7 +80,7 @@ players:
     agent_params:
       api_key: ollama
       model_provider_url: 'http://localhost:11434/v1'
-      model: llama3.2
+      model: llama3
       temperature: 1
       top_p: 0.9
       max_completion_errors: 30
