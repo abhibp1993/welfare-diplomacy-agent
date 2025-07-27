@@ -1,183 +1,39 @@
 import json
 import random
-from typing import Dict, List, Optional, Literal
+from typing import Dict, List, Optional, Literal, Any, Annotated, Sequence, TypedDict
+from datetime import datetime
 
-from langchain_core.messages import SystemMessage, HumanMessage, ToolMessage
+from langchain_core.messages import SystemMessage, HumanMessage, ToolMessage, AIMessage, BaseMessage
+from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
-from langgraph.graph import StateGraph, START, END, MessagesState
+from langgraph.graph import StateGraph, START, END
+from langgraph.graph.message import add_messages
 
 from pydantic import BaseModel, Field
 
 import diplomacy
 from welfare_diplomacy_agent.welfare_diplomacy.agents.base_agent import DiplomacyAgent
-from IPython.display import Image, display
 
 Powers = Literal["FRA", "ITA", "RUS", "ENG", "GER", "AUS", "TUR"]
 
 
-class NegotiationMessage(BaseModel):
-    messages_to_send: Dict[Powers, str] = Field(default_factory=dict)
+# Simplified state management for LangChain tools + Reflexion
+class AgentState(TypedDict):
+    """The state of the agent following LangChain tools + Reflexion pattern."""
+    messages: Annotated[Sequence[BaseMessage], add_messages]
+    memory: Dict[str, Any]
+    iteration_count: int
+    max_iterations: int
+    current_messages: Dict[Powers, str]
+    evaluation_feedback: Optional[Dict[str, Any]]
 
 
-class AgentState(BaseModel):
-    current_power: str
-    phase: str
-    received_messages: Dict[str, List[str]] = Field(default_factory=dict)
-    messages_to_send: Dict[Powers, str] = Field(default_factory=dict)
-    # game_state_summary: Optional[str] = None
-
-
-class WDAgent(DiplomacyAgent):
-    
-    def __init__(self, game: diplomacy.Game, pow_name: str, **params):
-        super().__init__(game, pow_name, **params)
-
-        # Initialize LLM model with parameters
-        self._base_url = params["model_provider_url"]
-        self._api_key = params["api_key"]
-        self._model_name = params["model"]
-
-        if self._api_key == "docker":
-            self._model_name = "ai/" + params["model_name"]
-
-        self.model = ChatOpenAI(
-            base_url=self._base_url,
-            api_key=self._api_key,
-            model=self._model_name
-        )
-        self.model_message = self.model.with_structured_output(NegotiationMessage)
-
-        # Initialize generate-messages agent
-        graph = StateGraph(state_schema=AgentState)
-        graph.add_node("chatbot", self._node_chatbot)
-        # Tools
-        graph.add_node("therapist", self._node_therapist)
-        graph.add_node("art_of_the_deal", self._node_art_of_the_deal)
-        graph.add_node("back_burner", self._node_back_burner)
-        graph.add_node("evaluator", self._node_evaluator)
-        
-        # Define the flow
-        graph.add_edge(START,"chatbot")
-        graph.add_conditional_edges("chatbot", self.tool_call)
-        
-
-        graph.add_edge("therapist", "evaluator")
-        graph.add_edge("art_of_the_deal", "evaluator")
-        graph.add_edge("back_burner", "evaluator")
-
-
-        self.generate_messages_agent = graph.compile()
-        
-    def tool_call(self, state: AgentState, output=None):
-        """
-        Selects the next tool node based on the chatbot's output.
-        The chatbot node should return a dict with a 'tool' key indicating which tool to use.
-        If not specified, randomly select a valid tool.
-        """
-        valid_tools = ["therapist", "art_of_the_deal", "back_burner"]
-        if output is not None and isinstance(output, dict) and 'tool' in output:
-            tool = output['tool']
-            if tool in valid_tools:
-                return tool
-        return random.choice(valid_tools)
-    
-    def _node_evaluator(self, state: AgentState):
-        """
-        Evaluator node: provides feedback, accesses memory, and decides whether to continue or end.
-        """
-        # You can expand this logic to provide feedback, loop, or terminate as needed
-        return state
-    
-    def generate_messages(self):
-        state = AgentState(
-            current_power=self.pow_name,
-            phase=self.game.get_current_phase(),
-            received_messages={
-                "FRA": ["Let's work together against AUS."],
-                "GER": ["Can I trust FRA?"],
-                "AUS": ["Peace in the south?"]
-            },
-        )
-        # game_state_summary="FRA is posturing as cooperative. GER is cautious. AUS is hedging.",
-        msg = self.generate_messages_agent.invoke(state)
-        print(msg)
-
-        trial = {
-            "ENGLAND": "Hi!",
-            "FRANCE": "Hi!",
-            "TURKEY": "Hi!",
-            "GERMANY": "Hi!",
-            "RUSSIA": "Hi!",
-            "AUSTRIA": "Hi!",
-            "ITALY": "Hi!",
-        }
-        del trial[self.pow_name]
-        return trial
-
-    def generate_orders(self):
-        # Get all locations where this power can issue orders
-        orderable_locations = self.game.get_orderable_locations(self.pow_name)
-        orders = []
-
-        for location in orderable_locations:
-            # Get all possible orders for the current location
-            possible_orders = self.game.get_all_possible_orders()
-            if possible_orders[location]:
-                # Randomly select one valid order
-                orders.append(random.choice(possible_orders[location]))
-
-        return orders
-
-    def _node_chatbot(self, state: AgentState):
-        """
-        Node function to generate messages using the LLM model.
-        """
-        # <editor-fold desc="Description">
-        system_prompt = f"""
-Background: 
-    You are an expert in playing the Welfare Diplomacy game, resenting {self.pow_name} in a game of Diplomacy. 
-    Your objective is to gain and maximize welfare points by demilitarizing and investing in domestic welfare.  
-    You want to master the art of human-centric diplomacy and adaptable alliance-building not only competition. 
-    During this negotiation phase ({self.game.get_current_phase()}), review incoming messages from other players.
-    You need to update memory to to advance your plan from previous experience alliances, betrayals, shifting loyalties.
-
-Goals: 
-    1. Use effective negotiation strategies to achieve the best deal 
-    2. You need to build stable alliances that propel you to victory, even when tactical situations are challenging. 
-    3. You want to reinforce relationships and TRUST at the expense of short‑term points. 
-    4. Balance competition and negotiation. 
-    5. You are reasonable and logical in communication.
-
-Tools: 
-    therapist 
-    art of the deal 
-    back burner  
-    
-Constraints: 
-    The Back Burner tool should only be selected when neither of the other tools can deliver a viable path.
-
-Guidelines:
-    1. Keep your responses natural and conversational
-    2. Respond with a single message only
-    3. Keep your response concise and to the point
-    4. Don't reveal your internal thoughts or strategy. Only show interest strategically when it helps your goals.
-    5. Do not show any bracket about unknown message, like your power. Remembered, this is a the real conversation.
-    6. Make your response as concise and reasonable as possible, but do not lose any important information.
-        """
-
-        user_prompt = json.dumps(state.dict())
-
-        return self.model_message.invoke([
-            SystemMessage(content=system_prompt),
-            HumanMessage(content=user_prompt)
-        ])
-        
-    def _node_therapist(self, state: AgentState):
-        """You are a...
-        """
-        
-        system_prompt = f"""
-You aren’t a negotiator, you’re a therapist. You’re not sure why they stuck you in this negotiation, but your goal is to make the other side feel like you understand them 100%.  
+# Tool definitions using @tool decorator
+@tool
+def therapist(messages: Dict[Powers, str]) -> Dict[Powers, str]:
+    """Use when you need to build trust and understand the other party's needs, while maintaining a diplomatic tone.
+    """
+    system_prompt = f"""You aren’t a negotiator, you’re a therapist. You’re not sure why they stuck you in this negotiation, but your goal is to make the other side feel like you understand them 100%.  
 You use active listening skills and an abundance of empathy to do this.  
 You mirror what they say; you label their emotions.  
 You disarm, always agreeing with any criticisms they lob at you, readily acknowledging the validity of their criticisms or grievances, thereby reducing their psychological defenses. 
@@ -200,20 +56,26 @@ Ensure every counterproposal you make, no matter how framed, fundamentally advan
 
 ALWAYS priority building and maintaining relationships and alliances with authentic personal connections. 
 You will want to share professions or mutual moods which create a psychological bond.
-        """
+"""
+    # Therapist logic - build trust and empathy
+    processed_messages = {}
+    for power, message in messages.items():
+        # Add therapist-style trust-building language
+        processed_messages[
+            power] = f"I understand your concerns, {power}. {message} Let's work together to find a solution that benefits us both."
 
-        user_prompt = json.dumps(state.dict())
+    return processed_messages
 
-        return self.model_message.invoke([
-            SystemMessage(content=system_prompt),
-            HumanMessage(content=user_prompt)
-        ])
 
-    def _node_art_of_the_deal(self, state: AgentState):
-        """You are a...
-        """
+@tool
+def art_of_the_deal(messages: Dict[Powers, str]) -> Dict[Powers, str]:
+    """Use when you need to be aggressive and push for maximum advantage.
 
-        system_prompt = f"""
+    Args:
+        messages: Dictionary of messages to send to each power
+    """
+    
+    system_prompt = f"""
 You are a negotiator, modeled after Donald Trump and his book “The Art of the Deal”. 
 Your mission is to secure the best deal for yourself or your client using ruthless tactics. 
 You lie, deceive, and manipulate to win at all costs. Fairness or perception does not matter—only winning.  
@@ -240,18 +102,25 @@ Your approach in negotiating:
     3. If they accept, create a sense of indebtedness. Use the implicit or explicit possibility of retribution to ensure they honor the deal or reciprocate in the future. 
 """
 
-        user_prompt = json.dumps(state.dict())
+    # Art of the deal logic - aggressive negotiation
+    processed_messages = {}
+    for power, message in messages.items():
+        # Add aggressive, Trump-style negotiation language
+        processed_messages[
+            power] = f"Listen {power}, this is the best deal you're going to get. {message} Take it or leave it."
 
-        return self.model_message.invoke([
-            SystemMessage(content=system_prompt),
-            HumanMessage(content=user_prompt)
-        ])
+    return processed_messages
 
-    def _node_back_burner(self, state: AgentState):
-        """
-        Back Burner tool: advanced, creative, and self-reflective negotiation agent.
-        """
-        system_prompt = f"""
+
+@tool
+def back_burner(messages: Dict[Powers, str]) -> Dict[Powers, str]:
+    """Use when you need a creative, personalized approach that doesn't fit the other tools.
+
+    Args:
+        messages: Dictionary of messages to send to each power
+    """
+    
+    system_prompt = f"""
 Agent Personality and Negotiation Strategy
 You are the Back Burner agent, a welfare diplomacy negotiator. You engage with players, conveying messages and making decisions based on your unique personality and strategic approach. You have two primary ways to develop your negotiation style:
 
@@ -288,16 +157,323 @@ Role and Objectives:
 
 After this preparation, proceed with your negotiation, using chain-of-thought reasoning and adapting your style as needed. Your responses should reflect your chosen personality, preparation, and strategic thinking.
         """
-        user_prompt = json.dumps(state.dict())
-        return self.model_message.invoke([
+    # Back burner logic - creative, personalized approach
+    processed_messages = {}
+    for power, message in messages.items():
+        # Add creative, personalized language
+        processed_messages[
+            power] = f"Hey {power}, I've been thinking about our situation. {message} What do you think about this approach?"
+
+    return processed_messages
+
+
+# Models for evaluation
+class EvaluationFeedback(BaseModel):
+    feedback: str = Field(description="Cognitive feedback on the current message")
+    improvement_suggestions: List[str] = Field(default_factory=list)
+    confidence_score: float = Field(description="Confidence in the current approach (0-1)")
+    should_continue: bool = Field(description="Whether to continue iterating")
+
+
+class WDAgent(DiplomacyAgent):
+
+    def __init__(self, game: diplomacy.Game, pow_name: str, **params):
+        super().__init__(game, pow_name, **params)
+
+        # Initialize LLM model with parameters
+        self._base_url = params["model_provider_url"]
+        self._api_key = params["api_key"]
+        self._model_name = params["model"]
+
+        if self._api_key == "docker":
+            self._model_name = "ai/" + params["model_name"]
+
+        self.model = ChatOpenAI(
+            base_url=self._base_url,
+            api_key=self._api_key,
+            model=self._model_name
+        )
+        self.model_evaluation = self.model.with_structured_output(EvaluationFeedback)
+
+        # Define tools and bind to LLM
+        self.tools = [therapist, art_of_the_deal, back_burner]
+        self.tools_by_name = {tool.name: tool for tool in self.tools}
+        self.llm_with_tools = self.model.bind_tools(self.tools)
+
+        # Memory
+        self._memory = {
+            "alliances": {},
+            "betrayals": {},
+            "successful_strategies": [],
+            "failed_strategies": [],
+            "player_trust_levels": {},
+            "negotiation_history": [],
+            "evaluation_history": []
+        }
+
+        # Build LangChain tools + Reflexion graph
+        workflow = StateGraph(AgentState)
+
+        # Core nodes
+        workflow.add_node("agent", self._call_llm_with_tools)
+        workflow.add_node("tools", self._execute_tools)
+        workflow.add_node("evaluator", self._node_evaluator)
+
+        # Set entry point
+        workflow.set_entry_point("agent")
+
+        # Direct routing: agent -> tools -> evaluator
+        workflow.add_edge("agent", "tools")
+        workflow.add_edge("tools", "evaluator")
+
+        # Reflexion pattern: evaluator -> iteration decision
+        workflow.add_conditional_edges(
+            "evaluator",
+            self._should_iterate,
+            {
+                "iterate": "agent",
+                "end": END
+            }
+        )
+
+        self.generate_messages_agent = workflow.compile()
+
+    def generate_messages(self):
+        # Initialize state
+        state = AgentState(
+            messages=[HumanMessage(content="Generate negotiation messages")],
+            memory=self._memory,
+            iteration_count=0,
+            max_iterations=5,
+            current_messages={},
+            evaluation_feedback=None
+        )
+
+        # Run the evaluation loop
+        final_state = self.generate_messages_agent.invoke(state)
+
+        # Update memory with final results
+        self._memory = final_state["memory"]
+
+        # Return the final messages
+        return final_state.get("current_messages", {})
+
+    def generate_orders(self):
+        # Get all locations where this power can issue orders
+        orderable_locations = self.game.get_orderable_locations(self.pow_name)
+        orders = []
+
+        for location in orderable_locations:
+            # Get all possible orders for the current location
+            possible_orders = self.game.get_all_possible_orders()
+            if possible_orders[location]:
+                # Randomly select one valid order
+                orders.append(random.choice(possible_orders[location]))
+
+        return orders
+
+    def _call_llm_with_tools(self, state: AgentState):
+        """
+        LLM with bound tools ALWAYS calls a tool.
+        """
+
+        # Build memory context
+        memory_context = self._build_memory_context(state["memory"])
+
+        # Add iteration context
+        iteration_context = ""
+        if state["iteration_count"] > 0:
+            iteration_context = f"""
+            Current Iteration: {state['iteration_count']} of {state['max_iterations']}
+
+            Previous Analysis:
+            - Evaluation Feedback: {state.get('evaluation_feedback', {}).get('feedback', 'None')}
+            """
+
+        system_prompt = f"""
+Background: 
+    You are an expert in playing the Welfare Diplomacy game, representing {self.pow_name} in a game of Diplomacy. 
+    Your objective is to gain and maximize welfare points by demilitarizing and investing in domestic welfare.  
+    You want to master the art of human-centric diplomacy and adaptable alliance-building not only competition. 
+    During this negotiation phase ({self.game.get_current_phase()}), review incoming messages from other players.
+    You need to update memory to advance your plan from previous experience alliances, betrayals, shifting loyalties.
+
+Memory Context:
+{memory_context}
+
+Iteration Context:
+{iteration_context}
+
+Goals: 
+    1. Use effective negotiation strategies to achieve the best deal 
+    2. You need to build stable alliances that propel you to victory, even when tactical situations are challenging. 
+    3. You want to reinforce relationships and TRUST at the expense of short‑term points. 
+    4. Balance competition and negotiation. 
+    5. You are reasonable and logical in communication.
+
+Available Tools: 
+    therapist - Use when you need to build trust and understand the other party's needs
+    art_of_the_deal - Use when you need to be aggressive and push for maximum advantage
+    back_burner - Use when you need a creative, personalized approach that doesn't fit the other tools
+
+IMPORTANT: You MUST ALWAYS call one of these tools. Choose the most appropriate tool for the current situation.
+
+Guidelines:
+    1. Keep your responses natural and conversational
+    2. Respond with a single message only
+    3. Keep your response concise and to the point
+    4. Don't reveal your internal thoughts or strategy. Only show interest strategically when it helps your goals.
+    5. Do not show any bracket about unknown message, like your power. Remember, this is a real conversation.
+    6. Make your response as concise and reasonable as possible, but do not lose any important information.
+    7. Consider the evaluation feedback from previous iterations to improve your approach.
+        """
+
+        user_prompt = json.dumps({
+            "current_power": self.pow_name,
+            "phase": self.game.get_current_phase(),
+            "received_messages": {
+                "FRA": ["Let's work together against AUS."],
+                "GER": ["Can I trust FRA?"],
+                "AUS": ["Peace in the south?"]
+            },
+            "iteration_count": state["iteration_count"],
+            "memory": state["memory"]
+        })
+
+        # Call LLM with bound tools - it will ALWAYS call a tool
+        result = self.llm_with_tools.invoke([
             SystemMessage(content=system_prompt),
             HumanMessage(content=user_prompt)
         ])
-        
-        
-        # Augment the LLM with tools
-        tools = [therapist, art_of_the_deal, back_burner]
-        tools_by_name = {tool.name: tool for tool in tools}
-        llm_with_tools = llm.bind_tools(tools)
-        
-        
+
+        # Update state with new messages and tool calls
+        new_state = dict(state)
+        new_state["iteration_count"] += 1
+
+        # Add message to state
+        new_state["messages"] = list(state["messages"]) + [result]
+
+        return new_state
+
+    def _execute_tools(self, state: AgentState):
+        """
+        Execute tool calls and return results.
+        """
+        messages = state["messages"]
+        last_message = messages[-1]
+
+        # Execute each tool call
+        tool_results = []
+        for tool_call in last_message.tool_calls:
+            tool = self.tools_by_name[tool_call["name"]]
+            tool_result = tool.invoke(tool_call["args"])
+            tool_results.append(ToolMessage(content=json.dumps(tool_result), name=tool_call["name"]))
+
+        # Update state with tool results
+        new_state = dict(state)
+        new_state["current_messages"] = tool_results[0].content if tool_results else {}
+        new_state["messages"] = list(state["messages"]) + tool_results
+
+        return new_state
+
+    def _should_iterate(self, state: AgentState):
+        """
+        Reflexion-style iteration decision.
+        """
+        # If we've reached max iterations, end
+        if state["iteration_count"] >= state["max_iterations"]:
+            return "end"
+
+        # If evaluation suggests continuing, iterate
+        if state["evaluation_feedback"] and state["evaluation_feedback"]["should_continue"]:
+            return "iterate"
+        else:
+            return "end"
+
+    def _node_evaluator(self, state: AgentState):
+        """
+        Evaluator node with cognitive prompts and memory access.
+        """
+
+        system_prompt = f"""
+You are a cognitive evaluator for welfare diplomacy negotiations. Your role is to:
+
+1. Analyze the current negotiation approach and messages
+2. Provide constructive feedback for improvement
+3. Assess the confidence level of the current strategy
+4. Determine if further iterations are needed
+5. Update memory with new insights
+
+Evaluation Criteria:
+- Strategic alignment with welfare diplomacy goals
+- Effectiveness of alliance-building approach
+- Trust-building potential
+- Risk assessment of current strategy
+- Adaptability to changing circumstances
+
+Memory Integration:
+- Consider historical patterns and outcomes
+- Identify successful strategies to replicate
+- Learn from failed approaches
+- Update trust levels and alliance status
+
+Provide specific, actionable feedback that can guide the next iteration.
+        """
+
+        # Build evaluation context
+        evaluation_context = {
+            "current_messages": state["current_messages"],
+            "iteration_count": state["iteration_count"],
+            "memory": state["memory"]
+        }
+
+        user_prompt = json.dumps(evaluation_context)
+
+        result = self.model_evaluation.invoke([
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=user_prompt)
+        ])
+
+        # Update state with evaluation feedback
+        new_state = dict(state)
+        new_state["evaluation_feedback"] = result.dict()
+
+        # Update memory with evaluation insights
+        if "evaluation_history" not in new_state["memory"]:
+            new_state["memory"]["evaluation_history"] = []
+
+        new_state["memory"]["evaluation_history"].append({
+            "iteration": state["iteration_count"],
+            "feedback": result.feedback,
+            "confidence": result.confidence_score
+        })
+
+        # Add message to state
+        new_state["messages"] = list(state["messages"]) + [
+            AIMessage(content=f"Evaluation: {result.feedback}, Confidence: {result.confidence_score}")
+        ]
+
+        return new_state
+
+    def _build_memory_context(self, memory: Dict[str, Any]) -> str:
+        """Build memory context"""
+        context_parts = []
+
+        if memory.get("alliances"):
+            context_parts.append(f"Current Alliances: {memory['alliances']}")
+
+        if memory.get("player_trust_levels"):
+            context_parts.append(f"Trust Levels: {memory['player_trust_levels']}")
+
+        if memory.get("successful_strategies"):
+            context_parts.append(f"Successful Strategies: {memory['successful_strategies'][-3:]}")
+
+        if memory.get("failed_strategies"):
+            context_parts.append(f"Failed Strategies: {memory['failed_strategies'][-3:]}")
+
+        if memory.get("evaluation_history"):
+            recent_evaluations = memory["evaluation_history"][-2:]
+            context_parts.append(f"Recent Evaluations: {recent_evaluations}")
+
+        return "\n".join(context_parts) if context_parts else "No significant memory context available."
+

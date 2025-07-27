@@ -1,0 +1,37 @@
+{
+  "os":  "macOS-14.5-arm64-arm-64bit",
+  "python":  "CPython 3.11.13",
+  "startedAt":  "2025-07-27T08:56:43.681817Z",
+  "program":  "/Users/hannahnguyen/Downloads/Diplomacy_model/welfare_diplomacy_agent/simulate.py",
+  "codePath":  "simulate.py",
+  "codePathLocal":  "simulate.py",
+  "git":  {
+    "remote":  "https://github.com/abhibp1993/welfare-diplomacy-agent.git",
+    "commit":  "aef95018eb7755f5b831453e9c8cd74dd21b0a3b"
+  },
+  "email":  "nguyenvuhaanh2803@gmail.com",
+  "root":  "./wandb_logs",
+  "host":  "wireless-10-147-142-231.public.utexas.edu",
+  "executable":  "/opt/anaconda3/envs/wfd/bin/python",
+  "cpu_count":  8,
+  "cpu_count_logical":  8,
+  "disk":  {
+    "/":  {
+      "total":  "245107195904",
+      "used":  "176721047552"
+    }
+  },
+  "memory":  {
+    "total":  "8589934592"
+  },
+  "apple":  {
+    "name":  "Apple M2",
+    "ecpuCores":  4,
+    "pcpuCores":  4,
+    "gpuCores":  8,
+    "memoryGb":  8,
+    "swapTotalBytes":  "11811160064",
+    "ramTotalBytes":  "8589934592"
+  },
+  "writerId":  "5omgbjsfv9is5nn29au7i9e8as6rsr01"
+}

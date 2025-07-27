@@ -2,37 +2,21 @@ _wandb:
     value:
         cli_version: 0.21.0
         e:
-            5xxqoab7e3i6aabdjjsr36ijaewgbr6a:
-                apple:
-                    ecpuCores: 4
-                    gpuCores: 8
-                    memoryGb: 8
-                    name: Apple M2
-                    pcpuCores: 4
-                    ramTotalBytes: "8589934592"
-                    swapTotalBytes: "13958643712"
+            7x08beoegmjw1084hzqnylnezsdodcyy:
                 codePath: simulate.py
                 codePathLocal: simulate.py
-                cpu_count: 8
-                cpu_count_logical: 8
-                disk:
-                    /:
-                        total: "245107195904"
-                        used: "171509776384"
                 email: nguyenvuhaanh2803@gmail.com
                 executable: /opt/anaconda3/envs/wfd/bin/python
                 git:
-                    commit: a0b6c0653322db325e9e98ca54bb37c7619dedca
+                    commit: aef95018eb7755f5b831453e9c8cd74dd21b0a3b
                     remote: https://github.com/abhibp1993/welfare-diplomacy-agent.git
-                host: wireless-10-148-113-250.public.utexas.edu
-                memory:
-                    total: "8589934592"
+                host: wireless-10-147-142-231.public.utexas.edu
                 os: macOS-14.5-arm64-arm-64bit
                 program: /Users/hannahnguyen/Downloads/Diplomacy_model/welfare_diplomacy_agent/simulate.py
                 python: CPython 3.11.13
                 root: ./wandb_logs
-                startedAt: "2025-07-25T21:53:11.567845Z"
-                writerId: 5xxqoab7e3i6aabdjjsr36ijaewgbr6a
+                startedAt: "2025-07-27T08:38:37.033558Z"
+                writerId: 7x08beoegmjw1084hzqnylnezsdodcyy
         m: []
         python_version: 3.11.13
         t:
