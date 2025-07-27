@@ -57,7 +57,7 @@ class WDAgent(DiplomacyAgent):
         
         # Define the flow
         graph.add_edge(START,"chatbot")
-        graph.add_conditional_edges("chatbot", self.tool_selector)
+        graph.add_conditional_edges("chatbot", self.tool_call)
         
 
         graph.add_edge("therapist", "evaluator")
@@ -66,9 +66,8 @@ class WDAgent(DiplomacyAgent):
 
         self.generate_messages_agent = graph.compile()
 
-    def tool_selector(self, state: AgentState):
+    def tool_call(self, state: AgentState):
         """Selects the appropriate tool based on the state of the agent."""
-        # Placeholder: always select therapist
         return
     
     def _node_evaluator(self, state: AgentState):
