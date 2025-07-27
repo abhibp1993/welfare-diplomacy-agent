@@ -16,13 +16,6 @@ from welfare_diplomacy_agent.welfare_diplomacy.agents.base_agent import Diplomac
 
 Powers = Literal["FRA", "ITA", "RUS", "ENG", "GER", "AUS", "TUR"]
 
-#Add LangSmith tracing and API key
-LANGSMITH_TRACING="true"
-LANGSMITH_ENDPOINT="https://api.smith.langchain.com"
-LANGSMITH_API_KEY="<your-api-key>"
-LANGSMITH_PROJECT="diplomacy"
-OPENAI_API_KEY="<api-key>"
-
 # Define the state of the agent
 class AgentState(TypedDict):
     """The state of the agent following LangChain tools + Reflexion pattern."""
@@ -211,6 +204,7 @@ class WDAgent(DiplomacyAgent):
             self.llm_with_tools = self.model.bind_tools(self.openai_tools)
         except Exception:
             self.llm_with_tools = self.model.bind(functions=self.openai_tools)
+
 
         # Memory
         self._memory = {
