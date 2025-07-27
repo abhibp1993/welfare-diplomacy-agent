@@ -2,9 +2,10 @@ import json
 import random
 from typing import Dict, List, Optional, Literal
 
-from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_core.messages import SystemMessage, HumanMessage, ToolMessage
 from langchain_openai import ChatOpenAI
-from langgraph.graph import StateGraph, START, END
+from langgraph.graph import StateGraph, START, END, MessagesState
+
 from pydantic import BaseModel, Field
 
 import diplomacy
@@ -64,11 +65,21 @@ class WDAgent(DiplomacyAgent):
         graph.add_edge("art_of_the_deal", "evaluator")
         graph.add_edge("back_burner", "evaluator")
 
-        self.generate_messages_agent = graph.compile()
 
-    def tool_call(self, state: AgentState):
-        """Selects the appropriate tool based on the state of the agent."""
-        return
+        self.generate_messages_agent = graph.compile()
+        
+    def tool_call(self, state: AgentState, output=None):
+        """
+        Selects the next tool node based on the chatbot's output.
+        The chatbot node should return a dict with a 'tool' key indicating which tool to use.
+        If not specified, randomly select a valid tool.
+        """
+        valid_tools = ["therapist", "art_of_the_deal", "back_burner"]
+        if output is not None and isinstance(output, dict) and 'tool' in output:
+            tool = output['tool']
+            if tool in valid_tools:
+                return tool
+        return random.choice(valid_tools)
     
     def _node_evaluator(self, state: AgentState):
         """
@@ -282,3 +293,11 @@ After this preparation, proceed with your negotiation, using chain-of-thought re
             SystemMessage(content=system_prompt),
             HumanMessage(content=user_prompt)
         ])
+        
+        
+        # Augment the LLM with tools
+        tools = [therapist, art_of_the_deal, back_burner]
+        tools_by_name = {tool.name: tool for tool in tools}
+        llm_with_tools = llm.bind_tools(tools)
+        
+        
