@@ -1,0 +1,17 @@
+{
+  "os":  "macOS-14.5-arm64-arm-64bit",
+  "python":  "CPython 3.11.13",
+  "startedAt":  "2025-07-27T00:46:09.628806Z",
+  "program":  "/Users/hannahnguyen/Downloads/Diplomacy_model/welfare_diplomacy_agent/simulate.py",
+  "codePath":  "simulate.py",
+  "codePathLocal":  "simulate.py",
+  "git":  {
+    "remote":  "https://github.com/abhibp1993/welfare-diplomacy-agent.git",
+    "commit":  "40506c2a2fea1eb1e7783f1a42d7e197c460fbee"
+  },
+  "email":  "nguyenvuhaanh2803@gmail.com",
+  "root":  "./wandb_logs",
+  "host":  "wireless-10-148-113-250.public.utexas.edu",
+  "executable":  "/opt/anaconda3/envs/wfd/bin/python",
+  "writerId":  "be7r00e46jad7u9kgab3rp2ne1u5pm3l"
+}
