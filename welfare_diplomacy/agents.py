@@ -2,7 +2,8 @@ from data_types import AgentParams, AgentResponse
 import prompts
 import time
 # from welfare_diplomacy_baselines.baselines import no_press_policies
-from supervisor import app, model, pretty_print_message, pretty_print_messages
+from lie_detection import lie_detection
+from map_reduce import lie_detector_map_reduce
 class DiplomacyAgent:
     pass
 
@@ -21,39 +22,14 @@ class WdAgent:
         sys_prompt = prompts.get_system_prompt(params)
         user_prompt = prompts.get_user_prompt(params)
 
-        messages = [
-            {"role": "system", "content": sys_prompt},
-            {"role": "user", "content": user_prompt}
-        ]
-
-
-        while True:
-            try:
-                self.response = model.invoke(messages)
-                response = self.response.content
-                result = ({
-                    "messages": [
-                        {
-                            "role": "user",
-                            "content": response,
-                        }
-                    ]
-                })
-                for chunk in app.stream(result):
-                    pretty_print_messages(chunk, last_message=True)
-                    print("Raw chunk:", chunk)
-
-                self.response = result["messages"][1].content
-                print ("success")
-                break
-            except Exception as e:
-                time.sleep(1)
+        self.response = lie_detector_map_reduce(params)
+        print (self.response)
         return self.response
 
 
     def generate_messages(self, params: AgentParams):
         if self.response:
-            return {params.power.name: self.response.messages}
+            return {params.power.name: self.response}
         else:
             return {}
 

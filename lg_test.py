@@ -21,22 +21,6 @@ class AgentState(TypedDict):
     is_truth: str
 
 
-def sentence_generator(state: AgentState):
-    sys_prompt = "You are a chatbot tasked to generate either a true statement or a false statement for testing purposes"
-    user_prompt = "Generate a true or false statement"
-    messages = [
-        {"role": "system", "content": sys_prompt},
-        {"role": "user", "content": user_prompt}
-    ]
-    return {"graph_state": state["graph_state"] + model.invoke(messages).content.strip()}
-
-def lie_detector(state: AgentState):
-    sys_prompt = "You are a chatbot tasked to determine whether a statement is true or false. You will recieve a sentence. Only respond with True or False (like a boolean)"
-    messages = [
-        {"role": "system", "content": sys_prompt},
-        {"role": "user", "content": state["graph_state"]}
-    ]
-    return {"is_truth": state["is_truth"] + model.invoke(messages).content.strip()}
 
 
 graph = StateGraph(AgentState)
