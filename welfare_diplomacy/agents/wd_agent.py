@@ -1,6 +1,6 @@
 import json
 import random
-from typing import Dict, List, Optional, Literal
+from typing import Dict, List, Literal
 
 from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_openai import ChatOpenAI
@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 import diplomacy
 from welfare_diplomacy.agents.base_agent import DiplomacyAgent
 
-Powers = Literal["FRA", "ITA", "RUS", "ENG", "GER", "AUS", "TUR"]
+Powers = Literal["FRANCE", "ITALY", "RUSSIA", "ENGLAND", "GERMANY", "AUSTRIA", "TURKEY"]
 
 
 class NegotiationMessage(BaseModel):
@@ -46,24 +46,27 @@ class WDAgent(DiplomacyAgent):
         self.model_message = self.model.with_structured_output(NegotiationMessage)
 
         # Initialize generate-messages agent
+        self.generate_messages_agent = self.create_messages_agent()
+
+    def create_messages_agent(self):
         graph = StateGraph(state_schema=AgentState)
         graph.add_node("chatbot", self._node_chatbot)
         graph.add_edge(START, "chatbot")
-        self.generate_messages_agent = graph.compile()
+        return graph.compile()
 
     def generate_messages(self):
         state = AgentState(
             current_power=self.pow_name,
             phase=self.game.get_current_phase(),
             received_messages={
-                "FRA": ["Let's work together against AUS."],
-                "GER": ["Can I trust FRA?"],
-                "AUS": ["Peace in the south?"]
+                "FRANCE": ["Let's work together against AUS."],
+                "GERMANY": ["Can I trust FRA?"],
+                "AUSTRIA": ["Peace in the south?"]
             },
             # game_state_summary="FRA is posturing as cooperative. GER is cautious. AUS is hedging.",
         )
         msg = self.generate_messages_agent.invoke(state)
-        print(msg)
+        print(state.current_power, msg["messages_to_send"])
 
         trial = {
             "ENGLAND": "Hi!",
@@ -106,6 +109,7 @@ class WDAgent(DiplomacyAgent):
         Do not reveal your full intentions. Use subtlety, alliances, and deception as appropriate to advance your position.
         
         Output messages to send as reply, each specifying the recipient (power) and the message.
+        Acceptable power names are: "FRANCE", "ITALY", "RUSSIA", "ENGLAND", "GERMANY", "AUSTRIA", "TURKEY"
         """
 
         user_prompt = json.dumps(state.dict())
