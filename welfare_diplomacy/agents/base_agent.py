@@ -7,6 +7,7 @@ class DiplomacyAgent:
             f"Power {pow_name} not in game powers: {game.powers.keys()}. Names are case sensitive."
         self.game = game
         self.pow_name = pow_name
+        self._params = params
 
         # Phase tracking
         self._curr_phase = None

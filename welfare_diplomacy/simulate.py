@@ -30,7 +30,6 @@ import welfare_diplomacy.agents as agents
 # )
 from diplomacy import Game, Message
 
-
 # logger.configure(handlers=[{"sink": RichHandler()}])
 
 
@@ -40,12 +39,13 @@ from diplomacy import Game, Message
 #     MessageSummarizer,
 #     model_name_to_message_summarizer,
 # )
+CONFIG = "config_dyn_personality"
 
 
 def main():
     # Load configuration
     # game_config: dict = parse_args()
-    with open('run_configs/config0.yml', 'r') as file:
+    with open(f'run_configs/{CONFIG}.yml', 'r') as file:
         game_config = yaml.safe_load(file)
     logger.info(f"Loaded game configuration: \n{pprint.pformat(game_config)}")
 

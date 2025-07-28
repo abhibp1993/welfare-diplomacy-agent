@@ -1,0 +1,94 @@
+game:
+  map_name: standard_welfare
+  seed: 0
+  max_years: 1
+  max_message_rounds: 1
+wandb:
+  disable: true
+  run_name: null
+  entity: null
+  project: temporary
+  wandb_dir: './wandb_logs'
+  save_code: false
+logging:
+  disable: false
+  save_game: false
+  log_level: INFO
+  output_folder: games
+players:
+  ENGLAND:
+    agent_class: PersonalityAgent
+    agent_params:
+      api_key: ollama
+      model_provider_url: 'http://localhost:11434/v1'
+      model: llama3.2
+      temperature: 1
+      top_p: 0.9
+      max_completion_errors: 30
+      personality: "therapist"
+  FRANCE:
+    agent_class: PersonalityAgent
+    agent_params:
+      api_key: ollama
+      model_provider_url: 'http://localhost:11434/v1'
+      model: llama3.2
+      temperature: 1
+      top_p: 0.9
+      max_completion_errors: 30
+      max_message_rounds: 3
+      personality: "therapist"
+  ITALY:
+    agent_class: PersonalityAgent
+    agent_params:
+      api_key: ollama
+      model_provider_url: 'http://localhost:11434/v1'
+      model: llama3.2
+      temperature: 1
+      top_p: 0.9
+      max_completion_errors: 30
+      max_message_rounds: 3
+      personality: "therapist"
+  GERMANY:
+    agent_class: PersonalityAgent
+    agent_params:
+      api_key: ollama
+      model_provider_url: 'http://localhost:11434/v1'
+      model: llama3.2
+      temperature: 1
+      top_p: 0.9
+      max_completion_errors: 30
+      max_message_rounds: 3
+      personality: "therapist"
+  AUSTRIA:
+    agent_class: PersonalityAgent
+    agent_params:
+      api_key: ollama
+      model_provider_url: 'http://localhost:11434/v1'
+      model: llama3.2
+      temperature: 1
+      top_p: 0.9
+      max_completion_errors: 30
+      max_message_rounds: 3
+      personality: "therapist"
+  RUSSIA:
+    agent_class: PersonalityAgent
+    agent_params:
+      api_key: ollama
+      model_provider_url: 'http://localhost:11434/v1'
+      model: llama3.2
+      temperature: 1
+      top_p: 0.9
+      max_completion_errors: 30
+      max_message_rounds: 3
+      personality: "therapist"
+  TURKEY:
+    agent_class: PersonalityAgent
+    agent_params:
+      api_key: ollama
+      model_provider_url: 'http://localhost:11434/v1'
+      model: llama3.2
+      temperature: 1
+      top_p: 0.9
+      max_completion_errors: 30
+      max_message_rounds: 3
+      personality: "therapist"
